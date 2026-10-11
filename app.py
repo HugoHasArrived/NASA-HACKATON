@@ -1096,7 +1096,7 @@ k
 `).join(' + ')||'Free'
 }
 function act(id){
-if(!game||game.ended)return;const a=actions.find(x=>x.id===id);if(!canPay(a.cost)){
+if(!game){toast('Launch a mission before choosing an operation.');return}if(game.ended){toast('This mission has ended. Restart to try again.');return}const actionId=String(id||'').trim();const a=actions.find(x=>String(x.id).trim()===actionId);if(!a){console.error('Unknown mission action ID:',actionId);toast('That operation could not be found. Refresh the page and try again.');return}if(!canPay(a.cost)){
 toast('Not enough supplies. Choose a different operation.');log('Could not complete '+a.name+': not enough supplies.','warn');render();return
 }
 Object.entries(a.cost).forEach(([k,v])=>game[k]-=v);const msg=a.run(game);if(a.goal)game.goals[a.goal]=true;for(const k of ['oxygen','water','food','power','shield','health','morale'])game[k]=clamp(game[k]);game.parts=clamp(game.parts,0,30);game.log.unshift({
@@ -1186,13 +1186,12 @@ pct<23?'<span class="danger">Urgent: act soon</span>':pct<48?'<span class="warni
 </div></div>`
 }
 ).join('');$('recommendation').innerHTML='<b>Suggested next step:</b> '+advice().text;$('actions').innerHTML=actions.map(a=>{
-let ok=canPay(a.cost);return `<button class="action" data-action="${
+let ok=canPay(a.cost);return `<button type="button" class="action" data-action="${
 a.id
-}
-" ${
-ok?'':'disabled'
-}
-><span class="actiontop"><span class="ico">${
+}" aria-disabled="${
+ok?'false':'true'
+}">
+<span class="actiontop"><span class="ico">${
 a.icon
 }
 </span><span class="aname">${
@@ -1212,7 +1211,7 @@ ok?'':' • Not enough supplies'
 }
 </span></button>`
 }
-).join('');document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>act(b.dataset.action)));const goals=[['solar','Tune the solar array','Improve stored power'],['repair','Repair life support','Keep oxygen working'],['farm','Grow food','Produce meals locally'],['shield','Improve the shelter','Strengthen radiation protection'],['research','Run an experiment','Earn science points']];$('objectives').innerHTML=goals.map(([k,n,d])=>`<div class="objective"><div class="check ${
+).join('');document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>act((b.dataset.action||'').trim())));const goals=[['solar','Tune the solar array','Improve stored power'],['repair','Repair life support','Keep oxygen working'],['farm','Grow food','Produce meals locally'],['shield','Improve the shelter','Strengthen radiation protection'],['research','Run an experiment','Earn science points']];$('objectives').innerHTML=goals.map(([k,n,d])=>`<div class="objective"><div class="check ${
 game.goals[k]?'done':''
 }
 ">${
@@ -1468,7 +1467,7 @@ function clickControl(event){
 const target=event.target instanceof Element?event.target.closest('button'):null;
 if(!target)return;
 const id=target.id;
-const action=target.dataset.action;
+const action=(target.dataset.action||'').trim();
 const destination=target.dataset.world;
 const direction=target.dataset.roverDir;
 try{
@@ -1485,7 +1484,7 @@ if(id==='helpBtn'){event.preventDefault();event.stopImmediatePropagation();byId(
 if(id==='closeHelp'){event.preventDefault();event.stopImmediatePropagation();byId('helpOverlay').classList.add('hidden');return}
 if(id==='restartBtn'||id==='againBtn'){event.preventDefault();event.stopImmediatePropagation();byId('startOverlay').classList.remove('hidden');byId('endOverlay').classList.add('hidden');return}
 if(id==='clearLog'){event.preventDefault();event.stopImmediatePropagation();if(game){game.log=[];render()}notify('Mission log cleared.');return}
-}catch(error){console.error('Mission control action failed:',error);notify('That action hit an error. Refresh the page and try again.');}
+}catch(error){console.error('Mission control action failed:',error);notify('Action failed: '+(error&&error.message?error.message:'unknown error')+'. See browser console for details.');}
 }
 document.addEventListener('click',clickControl,true);
 window.addEventListener('error',function(event){console.error('Mission Trainer error:',event.message);notify('A game script error occurred. Refresh the page; if it continues, check Render logs.');});
