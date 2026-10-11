@@ -1463,7 +1463,7 @@ document.getElementById('loadBtn').addEventListener('click',()=>{try{const raw=l
 
 @app.route('/')
 def home():
-    return render_template_string(PAGE)
+    return app.response_class(PAGE, mimetype='text/html')
 
 
 @app.route('/health')
