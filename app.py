@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, jsonify
+from flask import Flask, jsonify
 import os
 
 app = Flask(__name__)
@@ -1459,6 +1459,37 @@ document.getElementById('roverStart').addEventListener('click',()=>{if(roverStat
 document.getElementById('saveBtn').addEventListener('click',()=>{if(!game){toast('Launch a mission before saving.');return}try{localStorage.setItem('juniorAstronautMissionSave',JSON.stringify({game,world}));toast('Mission saved on this device.')}catch(e){toast('Save failed in this browser.')}});
 document.getElementById('loadBtn').addEventListener('click',()=>{try{const raw=localStorage.getItem('juniorAstronautMissionSave');if(!raw){toast('No saved mission found on this device.');return}const data=JSON.parse(raw);if(!data.game||!data.game.world)throw new Error('invalid save');game=data.game;world=data.world||game.world;document.querySelectorAll('[data-world]').forEach(b=>b.classList.toggle('selected',b.dataset.world===world));$('startOverlay').classList.add('hidden');$('endOverlay').classList.add('hidden');render();roverDraw();toast('Saved mission loaded.')}catch(e){toast('Could not load that save. Start a new mission.')}});
 
+</script>
+<script>
+(function(){
+function byId(id){return document.getElementById(id)}
+function notify(message){const el=byId('toast');if(!el)return;el.textContent=message;el.classList.remove('hidden');window.clearTimeout(window.__missionToastTimer);window.__missionToastTimer=window.setTimeout(()=>el.classList.add('hidden'),3200)}
+function clickControl(event){
+const target=event.target instanceof Element?event.target.closest('button'):null;
+if(!target)return;
+const id=target.id;
+const action=target.dataset.action;
+const destination=target.dataset.world;
+const direction=target.dataset.roverDir;
+try{
+if(destination){event.preventDefault();event.stopImmediatePropagation();world=destination;document.querySelectorAll('[data-world]').forEach(b=>b.classList.toggle('selected',b.dataset.world===world));notify(destination+' selected. Press LAUNCH MISSION to begin.');return}
+if(id==='launchBtn'){event.preventDefault();event.stopImmediatePropagation();launch();notify('Mission launched! Choose an operation card below.');return}
+if(action){event.preventDefault();event.stopImmediatePropagation();if(!game){notify('First press LAUNCH MISSION.');return}if(game.ended){notify('This mission has ended. Press Restart to begin again.');return}act(action);return}
+if(id==='guideNext'){event.preventDefault();event.stopImmediatePropagation();guideIndex=(guideIndex+1)%guideTips.length;const strip=byId('guideStrip');strip.querySelector('.guide-number').textContent=String(guideIndex+1);strip.querySelector('strong').textContent='Easy play tip '+(guideIndex+1)+' of '+guideTips.length;strip.querySelector('span:not(.guide-number)').textContent=guideTips[guideIndex];return}
+if(id==='roverStart'){event.preventDefault();event.stopImmediatePropagation();if(roverState.complete)roverReset(false);roverState.active=true;roverState.battery=Math.max(roverState.battery,30);byId('roverMessage').textContent='Rover deployed! Use the arrow buttons or WASD to collect samples.';roverHud();roverDraw();notify('Rover deployed. Drive to the glowing samples.');return}
+if(id==='roverReset'){event.preventDefault();event.stopImmediatePropagation();roverReset(true);return}
+if(direction){event.preventDefault();event.stopImmediatePropagation();if(!roverState.active){notify('Press Start expedition before driving.');return}roverMove(direction);return}
+if(id==='saveBtn'){event.preventDefault();event.stopImmediatePropagation();if(!game){notify('Launch a mission before saving.');return}localStorage.setItem('juniorAstronautMissionSave',JSON.stringify({game,world}));notify('Mission saved on this device.');return}
+if(id==='loadBtn'){event.preventDefault();event.stopImmediatePropagation();const raw=localStorage.getItem('juniorAstronautMissionSave');if(!raw){notify('No saved mission found on this device yet.');return}const data=JSON.parse(raw);game=data.game;world=data.world||game.world;document.querySelectorAll('[data-world]').forEach(b=>b.classList.toggle('selected',b.dataset.world===world));byId('startOverlay').classList.add('hidden');byId('endOverlay').classList.add('hidden');render();roverDraw();notify('Saved mission loaded.');return}
+if(id==='helpBtn'){event.preventDefault();event.stopImmediatePropagation();byId('helpOverlay').classList.remove('hidden');return}
+if(id==='closeHelp'){event.preventDefault();event.stopImmediatePropagation();byId('helpOverlay').classList.add('hidden');return}
+if(id==='restartBtn'||id==='againBtn'){event.preventDefault();event.stopImmediatePropagation();byId('startOverlay').classList.remove('hidden');byId('endOverlay').classList.add('hidden');return}
+if(id==='clearLog'){event.preventDefault();event.stopImmediatePropagation();if(game){game.log=[];render()}notify('Mission log cleared.');return}
+}catch(error){console.error('Mission control action failed:',error);notify('That action hit an error. Refresh the page and try again.');}
+}
+document.addEventListener('click',clickControl,true);
+window.addEventListener('error',function(event){console.error('Mission Trainer error:',event.message);notify('A game script error occurred. Refresh the page; if it continues, check Render logs.');});
+})();
 </script></body></html>"""
 
 @app.route('/')
