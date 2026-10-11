@@ -718,6 +718,22 @@ button{transition:transform .16s,border-color .16s,background .16s,box-shadow .1
 @media(max-width:560px){.scene{height:250px}.scene-label,.scene-state{font-size:9px;padding:5px 7px}.scene-label{max-width:62%}.scene-state{max-width:48%}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
 
+
+.expedition{overflow:hidden;position:relative;background:linear-gradient(145deg,#101f35,#08121f)}
+.expedition-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.rover-wrap{position:relative;border:1px solid #36516d;border-radius:16px;overflow:hidden;background:#090f1d;margin-top:14px}
+#roverCanvas{display:block;width:100%;height:310px;touch-action:none}
+.rover-hud{display:flex;gap:8px;flex-wrap:wrap;padding:10px;background:#091421;border-top:1px solid #253d55}
+.hud-pill{border:1px solid #2d4b67;border-radius:999px;padding:5px 10px;font-size:11px;color:#cce8f8;background:#10243a}
+.rover-controls{display:grid;grid-template-columns:repeat(3,48px);gap:6px;justify-content:center;align-items:center;margin:12px auto 2px}
+.rover-controls button{height:42px;padding:0;font-size:17px;touch-action:manipulation}
+.rover-controls .empty{visibility:hidden}
+.rover-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:10px}
+.mission-banner{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #326078;background:linear-gradient(110deg,#103449,#102036);border-radius:13px;margin-top:12px}
+.mission-banner .emoji{font-size:24px}
+#roverMessage{font-size:12px;color:#b7cce0;margin-top:8px;min-height:18px}
+@media(max-width:560px){#roverCanvas{height:240px}.rover-controls{grid-template-columns:repeat(3,54px)}.rover-controls button{height:48px}}
+
 </style>
 </head>
 <body>
@@ -737,7 +753,7 @@ button{transition:transform .16s,border-color .16s,background .16s,box-shadow .1
 </span>
 <span id="headerStatus">READY FOR TRAINING</span>
 </span>
-<button id="helpBtn">❔ Help</button>
+<button id="saveBtn">💾 Save</button><button id="loadBtn">📂 Load</button><button id="helpBtn">❔ Help</button>
 <button id="restartBtn">↻ Restart</button>
 </div>
 </header>
@@ -808,6 +824,16 @@ button{transition:transform .16s,border-color .16s,background .16s,box-shadow .1
 </div>
 <div class="lesson" id="lesson">Your decisions affect the crew and outpost. Choose an operation to learn why it matters.</div>
 </section>
+
+<section class="panel expedition">
+<div class="expedition-head"><div><div class="eyebrow">OPTIONAL FIELD ACTIVITY</div><h2 style="margin:5px 0">Rover exploration</h2><div class="sub">Drive around the surface, collect science samples, and return safely to base.</div></div><span class="tag">NO DAY COST</span></div>
+<div class="mission-banner"><div class="emoji">🛰️</div><div><b>Field objective</b><div class="small muted">Collect 5 glowing samples, avoid the rocks, then drive back to the blue landing pad. Successful trips earn science points, spare parts, and crew morale.</div></div></div>
+<div class="rover-wrap"><canvas id="roverCanvas" aria-label="Interactive rover exploration field"></canvas><div class="rover-hud"><span class="hud-pill" id="roverSamples">Samples: 0 / 5</span><span class="hud-pill" id="roverDistance">Distance: 0 m</span><span class="hud-pill" id="roverBattery">Battery: 100%</span><span class="hud-pill" id="roverStatus">Rover parked</span></div></div>
+<div class="rover-actions"><div class="small muted">Keyboard: WASD or arrow keys. On phones, use the controls below.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="roverStart" class="primary">🚙 Start expedition</button><button id="roverReset">Reset field</button></div></div>
+<div class="rover-controls" aria-label="Rover direction controls"><span class="empty"></span><button data-rover-dir="up" aria-label="Drive forward">▲</button><span class="empty"></span><button data-rover-dir="left" aria-label="Drive left">◀</button><button data-rover-dir="down" aria-label="Drive backward">▼</button><button data-rover-dir="right" aria-label="Drive right">▶</button></div>
+<div id="roverMessage" aria-live="polite">Start an expedition when your mission is active. You can practice driving before launch, too.</div>
+</section>
+
 </main>
 <aside class="stack sidecol">
 <section class="panel">
@@ -1416,6 +1442,22 @@ render=function(){originalRender();updateSceneLabels()};
 window.addEventListener('resize',resizeSpaceScene,{passive:true});
 resizeSpaceScene();
 requestAnimationFrame(drawScene);
+
+
+
+const roverCanvas=document.getElementById('roverCanvas');
+const roverCtx=roverCanvas.getContext('2d');
+const roverState={x:0,y:0,baseX:0,baseY:0,samples:[],rocks:[],collected:0,battery:100,distance:0,active:false,complete:false,paid:false,keys:{},last:0};
+function roverResize(){const r=roverCanvas.getBoundingClientRect();const d=Math.min(window.devicePixelRatio||1,2);roverCanvas.width=Math.max(1,Math.floor(r.width*d));roverCanvas.height=Math.max(1,Math.floor(r.height*d));roverCtx.setTransform(d,0,0,d,0,0);if(!roverState.active)roverReset(false);roverDraw()}
+function roverW(){return roverCanvas.getBoundingClientRect().width}
+function roverH(){return roverCanvas.getBoundingClientRect().height}
+function roverReset(show=true){const w=roverW()||600,h=roverH()||300;roverState.baseX=w*.13;roverState.baseY=h*.75;roverState.x=roverState.baseX;roverState.y=roverState.baseY;roverState.collected=0;roverState.battery=100;roverState.distance=0;roverState.active=false;roverState.complete=false;roverState.paid=false;roverState.keys={};roverState.samples=[];roverState.rocks=[];for(let i=0;i<5;i++)roverState.samples.push({x:w*(.3+i*.125),y:h*(.27+((i*37)%47)/100),got:false,p:i*1.7});for(let i=0;i<8;i++)roverState.rocks.push({x:w*(.24+((i*19)%70)/100),y:h*(.2+((i*31)%61)/100),r:7+(i%4)*2});roverHud();roverDraw();if(show)document.getElementById('roverMessage').textContent='Field reset. Start an expedition and collect all five samples.'}
+function roverHud(){document.getElementById('roverSamples').textContent='Samples: '+roverState.collected+' / 5';document.getElementById('roverDistance').textContent='Distance: '+Math.round(roverState.distance)+' m';document.getElementById('roverBattery').textContent='Battery: '+Math.max(0,Math.round(roverState.battery))+'%';document.getElementById('roverStatus').textContent=roverState.complete?'Mission complete':roverState.active?'Exploring':roverState.battery<=0?'Battery empty':'Rover parked'}
+function roverDraw(){if(!roverCanvas||!roverCtx)return;const w=roverW(),h=roverH();if(!w||!h)return;const c=roverCtx;const mars=world==='Mars';const sky=c.createLinearGradient(0,0,0,h);sky.addColorStop(0,mars?'#3c1e37':'#091b36');sky.addColorStop(.65,mars?'#c06b55':'#607b9b');sky.addColorStop(1,mars?'#55303b':'#242e48');c.fillStyle=sky;c.fillRect(0,0,w,h);for(let i=0;i<55;i++){const x=(i*97+13)%w,y=(i*47+9)%(h*.52);c.fillStyle='rgba(255,255,255,'+(0.25+(i%4)*.13)+')';c.fillRect(x,y,1.5,1.5)}const planetX=w*.8,planetY=h*.22,pr=Math.min(w,h)*.13;c.beginPath();c.arc(planetX,planetY,pr,0,Math.PI*2);const pg=c.createRadialGradient(planetX-pr*.4,planetY-pr*.4,1,planetX,planetY,pr);pg.addColorStop(0,mars?'#ffd2a0':'#f1fbff');pg.addColorStop(1,mars?'#9e4a46':'#45688c');c.fillStyle=pg;c.fill();c.fillStyle=mars?'#a45c50':'#747e91';c.beginPath();c.moveTo(0,h*.64);for(let x=0;x<=w;x+=20)c.lineTo(x,h*.62+Math.sin(x*.027)*9+Math.cos(x*.055)*5);c.lineTo(w,h);c.lineTo(0,h);c.closePath();c.fill();c.fillStyle=mars?'#6b3940':'#343b50';c.fillRect(0,h*.76,w,h*.24);for(let i=0;i<35;i++){let x=(i*71+23)%w,y=h*(.79+(i%8)*.025);c.fillStyle=i%2?'#1a2537':'#9b8790';c.beginPath();c.ellipse(x,y,2+i%5,1+i%2,0,0,Math.PI*2);c.fill()}c.strokeStyle='#9bd8f7';c.lineWidth=2;c.setLineDash([5,6]);c.beginPath();c.moveTo(roverState.baseX,roverState.baseY);c.lineTo(w*.88,h*.28);c.stroke();c.setLineDash([]);c.fillStyle='#37d9ff22';c.beginPath();c.arc(roverState.baseX,roverState.baseY,23,0,Math.PI*2);c.fill();c.strokeStyle='#75e8ff';c.lineWidth=2;c.strokeRect(roverState.baseX-12,roverState.baseY-8,24,16);c.fillStyle='#b5f6ff';c.fillRect(roverState.baseX-5,roverState.baseY-4,10,8);for(const s of roverState.samples){if(s.got)continue;c.save();c.translate(s.x,s.y);c.rotate(Math.sin(performance.now()*.002+s.p)*.12);c.shadowColor='#6af9dc';c.shadowBlur=18;c.fillStyle='#70f5d8';c.beginPath();c.moveTo(0,-8);c.lineTo(6,0);c.lineTo(0,8);c.lineTo(-6,0);c.closePath();c.fill();c.restore()}for(const r of roverState.rocks){c.fillStyle='#4d566a';c.strokeStyle='#a5b2c4';c.lineWidth=1;c.beginPath();c.moveTo(r.x-r.r,r.y+r.r*.5);c.lineTo(r.x-r.r*.6,r.y-r.r);c.lineTo(r.x+r.r*.5,r.y-r.r*.8);c.lineTo(r.x+r.r,r.y+r.r*.6);c.closePath();c.fill();c.stroke()}c.save();c.translate(roverState.x,roverState.y);c.shadowColor='#f9c66a';c.shadowBlur=13;c.fillStyle='#e4b65f';c.fillRect(-12,-7,24,12);c.fillStyle='#b7e7f6';c.fillRect(-4,-12,10,7);c.shadowBlur=0;c.fillStyle='#111a28';for(const wx of [-8,7]){c.beginPath();c.arc(wx,6,4,0,Math.PI*2);c.fill();c.strokeStyle='#94a9b9';c.stroke()}c.strokeStyle='#e6f7ff';c.beginPath();c.moveTo(0,-12);c.lineTo(0,-17);c.stroke();c.restore();c.fillStyle='#eff8ff';c.font='bold 11px system-ui';c.fillText('BASE',roverState.baseX-15,roverState.baseY+28);c.fillStyle='#d8e8f5';c.font='11px system-ui';c.fillText(mars?'MARS FIELD ZONE':'LUNAR FIELD ZONE',12,20);if(!roverState.active&&!roverState.complete){c.fillStyle='#06111dcc';c.fillRect(w*.28,h*.42,w*.44,36);c.fillStyle='#fff';c.textAlign='center';c.font='bold 12px system-ui';c.fillText('START EXPEDITION TO DEPLOY ROVER',w*.5,h*.42+23);c.textAlign='left'}if(roverState.complete){c.fillStyle='#06111ddd';c.fillRect(w*.22,h*.4,w*.56,44);c.fillStyle='#8fffe0';c.textAlign='center';c.font='bold 14px system-ui';c.fillText('SAMPLES SECURED • RETURN COMPLETE',w*.5,h*.4+27);c.textAlign='left'}}
+function roverMove(dir){if(!roverState.active||roverState.complete||roverState.battery<=0)return;const speed=11;let dx=0,dy=0;if(dir==='up')dy=-speed;if(dir==='down')dy=speed;if(dir==='left')dx=-speed;if(dir==='right')dx=speed;const w=roverW(),h=roverH();const nx=Math.max(14,Math.min(w-14,roverState.x+dx)),ny=Math.max(22,Math.min(h-16,roverState.y+dy));let hit=false;for(const r of roverState.rocks){if(Math.hypot(nx-r.x,ny-r.y)<r.r+13){hit=true;break}}if(hit){roverState.battery=Math.max(0,roverState.battery-3);document.getElementById('roverMessage').textContent='Rock collision! Steer around obstacles; battery -3%.';roverHud();roverDraw();return}roverState.distance+=Math.hypot(dx,dy)*.35;roverState.x=nx;roverState.y=ny;roverState.battery=Math.max(0,roverState.battery-.18);for(const s of roverState.samples){if(!s.got&&Math.hypot(s.x-roverState.x,s.y-roverState.y)<18){s.got=true;roverState.collected++;document.getElementById('roverMessage').textContent='Sample secured! '+roverState.collected+' of 5 collected.'}}if(roverState.collected===5&&Math.hypot(roverState.x-roverState.baseX,roverState.y-roverState.baseY)<28){roverState.complete=true;roverState.active=false;if(!roverState.paid){roverState.paid=true;if(game&&!game.ended){game.science+=15;game.parts=clamp(game.parts+2,0,30);game.morale=clamp(game.morale+8);game.score+=100;log('Rover expedition complete: five samples returned. +15 science, +2 spare parts, +8 morale.','good');render()}document.getElementById('roverMessage').textContent='Excellent driving! All samples returned safely. Rewards added to your active mission.'}else document.getElementById('roverMessage').textContent='All samples returned safely.'}else if(roverState.battery<=0){roverState.active=false;document.getElementById('roverMessage').textContent='Battery depleted. Reset the field and plan a shorter route.'}roverHud();roverDraw()}
+document.getElementById('roverStart').addEventListener('click',()=>{if(roverState.complete)roverReset(false);roverState.active=true;roverState.battery=Math.max(roverState.battery,30);document.getElementById('roverMessage').textContent='Rover deployed. Collect all glowing samples and return to the base pad.';roverHud();roverDraw()});document.getElementById('roverReset').addEventListener('click',()=>roverReset(true));document.querySelectorAll('[data-rover-dir]').forEach(b=>{b.addEventListener('click',()=>roverMove(b.dataset.roverDir));});window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d','W','A','S','D'].includes(e.key)&&roverState.active){e.preventDefault();const k=e.key.toLowerCase();roverMove(k==='arrowup'||k==='w'?'up':k==='arrowdown'||k==='s'?'down':k==='arrowleft'||k==='a'?'left':'right')}});window.addEventListener('resize',roverResize,{passive:true});setTimeout(roverResize,80);
+document.getElementById('saveBtn').addEventListener('click',()=>{if(!game){toast('Launch a mission before saving.');return}try{localStorage.setItem('juniorAstronautMissionSave',JSON.stringify({game,world}));toast('Mission saved on this device.')}catch(e){toast('Save failed in this browser.')}});
+document.getElementById('loadBtn').addEventListener('click',()=>{try{const raw=localStorage.getItem('juniorAstronautMissionSave');if(!raw){toast('No saved mission found on this device.');return}const data=JSON.parse(raw);if(!data.game||!data.game.world)throw new Error('invalid save');game=data.game;world=data.world||game.world;document.querySelectorAll('[data-world]').forEach(b=>b.classList.toggle('selected',b.dataset.world===world));$('startOverlay').classList.add('hidden');$('endOverlay').classList.add('hidden');render();roverDraw();toast('Saved mission loaded.')}catch(e){toast('Could not load that save. Start a new mission.')}});
 
 </script></body></html>"""
 
